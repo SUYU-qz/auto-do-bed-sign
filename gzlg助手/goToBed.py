@@ -44,22 +44,23 @@ def getCode(image):
 
 def login(session):
     params = {'uid': ''}
-    # yzm_url = 'https://ids.gzist.edu.cn/lyuapServer/kaptcha'
-    # response = session.get(yzm_url, params=params)
-    # uid = response.json()['uid']
-    # yzm_base64 = re.search('base64,(.*)', response.json()['content']).group(1)
-    # yzm = getCode(yzm_base64)
+    yzm_url = 'https://ids.gzist.edu.cn/lyuapServer/kaptcha'
+    response = session.get(yzm_url, params=params)
+    uid = response.json()['uid']
+    yzm_base64 = re.search('base64,(.*)', response.json()['content']).group(1)
+    yzm = getCode(yzm_base64)
     psw = ctx.call('G5116', os.getenv('USERNAME'), os.getenv('PASSWORD'), '')
     data = {
         'username': os.getenv('USERNAME'),
         'password': str(psw),
         'service': 'https://xsfw.gzist.edu.cn/xsfw/sys/swmzncqapp/*default/index.do',
         'loginType': '',
-        'id': '',
-        # 'id': uid,
-        'code': ''
-        # 'code': str(yzm),
+        # 'id': '',
+        'id': uid,
+        # 'code': ''
+        'code': str(yzm),
     }
+    # 一次登陆
     response = session.post('https://ids.gzist.edu.cn/lyuapServer/v1/tickets', data=data)
     if 'NOUSER' in response.json():
         # logging.error('登录异常')
@@ -76,6 +77,26 @@ def login(session):
         result = '验证码错误'
         send_QQ_email_plain(result)
         sys.exit(1)
+    # 判断登录是否需要二次验证
+    if 'data' in response.json() and response.json()['data']['code'] == 'TWOVERIFY':
+        # 需要二次验证
+        vcodes = response.json()['data']['uid']
+        session.headers['vcodes'] = vcodes
+        json_data = {
+            'userName': str(os.getenv('USERNAME')),
+            'principal': os.getenv('PRINCIPAL'),
+            'credential': os.getenv('CREDENTIAL'),
+            'type': '2',
+            'service': 'https://xsfw.gzist.edu.cn/xsfw/sys/swmzncqapp/*default/index.do',
+            'loginType': '',
+            'isCommonIP': '',
+        }
+        session.post('https://ids.gzist.edu.cn/lyuapServer/login/twoVertify', headers=session.headers,
+                     json=json_data)
+        # 二次登陆
+        response = session.post('https://ids.gzist.edu.cn/lyuapServer/v1/tickets', data=data)
+        return response.json()['ticket']
+    # 登录成功
     else:
         # logging.log(logging.INFO, '登录成功')
         return response.json()['ticket']
