@@ -55,8 +55,6 @@ def login(session):
         'password': str(psw),
         'service': 'https://xsfw.gzist.edu.cn/xsfw/sys/swmzncqapp/*default/index.do',
         'loginType': '',
-        # # 'id': '',
-        # 'id': uid,
         # # 'code': ''
         # 'code': str(yzm),
     }
